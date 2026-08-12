@@ -40,7 +40,7 @@
   </div>
 
   <div id="appView" class="app-shell" hidden>
-    <aside class="sidebar">
+    <aside id="sidebar" class="sidebar">
       <div class="sidebar-brand">
         <img class="brand-logo" src="assets/tsi-logo.png" alt="TSI">
         <span>Marketing Workboard</span>
@@ -55,16 +55,17 @@
         <span class="principle-mark" aria-hidden="true"></span>
         <p>Visibility for better teamwork, not performance tracking.</p>
       </div>
-      <button id="signOutButton" class="profile-button" type="button">
+      <button id="profileButton" class="profile-button" type="button" aria-haspopup="dialog">
         <span class="avatar avatar-small" id="sidebarAvatar">M</span>
         <span><strong id="sidebarName">Marketing Team</strong><small id="sidebarEmail">Approved account</small></span>
         <span aria-hidden="true">↗</span>
       </button>
     </aside>
+    <button id="sidebarBackdrop" class="sidebar-backdrop" type="button" aria-label="Close navigation"></button>
 
     <main class="workspace">
       <header class="topbar">
-        <button id="menuButton" class="icon-button menu-button" type="button" aria-label="Open navigation">☰</button>
+        <button id="menuButton" class="icon-button menu-button" type="button" aria-label="Open navigation" aria-expanded="false" aria-controls="sidebar">☰</button>
         <div>
           <p id="pageKicker" class="page-kicker">Wednesday, August 12</p>
           <h1 id="pageTitle">Team overview</h1>
@@ -112,7 +113,7 @@
 
   <dialog id="taskDialog" class="task-dialog">
     <form id="taskForm" method="dialog">
-      <div class="dialog-head"><div><p class="context-label">Task details</p><h2 id="dialogTitle">Add a task</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div>
+      <div class="dialog-head"><div><p class="context-label">Task details</p><h2 id="dialogTitle">Add a task</h2></div><button id="closeTaskDialog" class="icon-button" type="button" aria-label="Close">×</button></div>
       <input id="taskId" type="hidden">
       <label>Task title<input id="taskTitle" required maxlength="90" placeholder="What needs to be done?"></label>
       <div class="form-grid">
@@ -124,6 +125,18 @@
       <label>Next step or note<textarea id="taskNote" rows="3" maxlength="220" placeholder="Add the context teammates need"></textarea></label>
       <div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancel</button><button id="saveTaskButton" class="button button-primary" value="default">Save task</button></div>
     </form>
+  </dialog>
+
+  <dialog id="accountDialog" class="task-dialog account-dialog">
+    <div class="account-panel">
+      <div class="dialog-head"><div><p class="context-label">Account settings</p><h2>Your account</h2></div><button id="closeAccountDialog" class="icon-button" type="button" aria-label="Close">×</button></div>
+      <div class="account-identity"><span class="avatar" id="accountAvatar">M</span><div><strong id="accountName">Marketing Team</strong><small id="accountEmail">Approved account</small></div></div>
+      <div class="account-actions">
+        <button id="changePasswordButton" class="button button-secondary" type="button">Change password</button>
+        <button id="signOutButton" class="button button-primary" type="button">Sign out</button>
+      </div>
+      <p id="accountMessage" class="form-message" role="status"></p>
+    </div>
   </dialog>
 
   <script type="module" src="app.js"></script>

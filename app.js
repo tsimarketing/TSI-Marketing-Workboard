@@ -88,11 +88,43 @@ async function loadFirebaseData() {
 function showApp() {
   $("loginView").hidden = true; $("appView").hidden = false;
   $("sidebarName").textContent = state.user.name; $("sidebarEmail").textContent = state.user.email; $("sidebarAvatar").textContent = state.user.initials;
+  $("accountName").textContent = state.user.name; $("accountEmail").textContent = state.user.email; $("accountAvatar").textContent = state.user.initials;
   render();
 }
 async function signOut() {
   if (state.firebase?.auth.currentUser) await state.firebase.authModule.signOut(state.firebase.auth);
-  state.user = null; $("appView").hidden = true; $("loginView").hidden = false;
+  state.user = null; $("accountDialog").close(); closeSidebar(); $("appView").hidden = true; $("loginView").hidden = false;
+}
+
+function openAccountSettings() {
+  $("accountMessage").textContent = "";
+  closeSidebar();
+  $("accountDialog").showModal();
+}
+
+async function changePassword() {
+  if (!state.user?.email || !state.firebase) return;
+  $("changePasswordButton").disabled = true;
+  try {
+    await state.firebase.authModule.sendPasswordResetEmail(state.firebase.auth, state.user.email);
+    $("accountMessage").textContent = "A password reset link has been sent to your email.";
+  } catch (error) {
+    $("accountMessage").textContent = "We could not send the reset link. Please try again.";
+  } finally {
+    $("changePasswordButton").disabled = false;
+  }
+}
+
+function openSidebar() {
+  $("sidebar").classList.add("open");
+  $("sidebarBackdrop").classList.add("open");
+  $("menuButton").setAttribute("aria-expanded", "true");
+}
+
+function closeSidebar() {
+  $("sidebar").classList.remove("open");
+  $("sidebarBackdrop").classList.remove("open");
+  $("menuButton").setAttribute("aria-expanded", "false");
 }
 
 function renderOverview() {
@@ -136,7 +168,7 @@ function setView(view, customTitle) {
   const titles = { overview: "Team overview", "my-tasks": "My tasks", "team-tasks": "Team tasks", projects: "Projects" };
   $("pageTitle").textContent = customTitle || titles[view];
   if (view === "my-tasks") state.taskScope = "my-tasks"; else if (view === "team-tasks" && !customTitle) state.taskScope = "team-tasks";
-  render(); $("sidebar").classList.remove("open");
+  render(); closeSidebar();
 }
 function render() { $("pageKicker").textContent = new Date().toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"}); if(state.currentView==="overview") renderOverview(); if(["my-tasks","team-tasks"].includes(state.currentView)) renderTasks(); if(state.currentView==="projects") renderProjects(); }
 
@@ -155,7 +187,7 @@ async function saveTask(event) {
   $("taskDialog").close(); setView("my-tasks");
 }
 
-$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("signOutButton").addEventListener("click", signOut); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("menuButton").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("profileButton").addEventListener("click", openAccountSettings); $("signOutButton").addEventListener("click", signOut); $("changePasswordButton").addEventListener("click", changePassword); $("closeAccountDialog").addEventListener("click", () => $("accountDialog").close()); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("closeTaskDialog").addEventListener("click", () => $("taskDialog").close()); $("menuButton").addEventListener("click", () => $("sidebar").classList.contains("open") ? closeSidebar() : openSidebar()); $("sidebarBackdrop").addEventListener("click", closeSidebar);
 document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
 $("priorityFilter").addEventListener("change", (event) => { state.priorityFilter = event.target.value; renderTasks(); });
 $("globalSearch").addEventListener("input", (event) => { state.search = event.target.value.trim().toLowerCase(); if(state.search) setView("team-tasks"); else render(); });
