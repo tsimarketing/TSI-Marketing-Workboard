@@ -3,7 +3,7 @@ import { firebaseConfig } from "./firebase-config.js";
 const DAY = 86400000;
 const today = new Date();
 
-const state = { user: null, members: demoMembers, tasks: [], currentView: "overview", taskScope: "team-tasks", statusFilter: "All", priorityFilter: "all", search: "", firebase: null };
+const state = { user: null, members: [], tasks: [], currentView: "overview", taskScope: "team-tasks", statusFilter: "All", priorityFilter: "all", search: "", firebase: null };
 const $ = (id) => document.getElementById(id);
 const firebaseReady = !Object.values(firebaseConfig).some((value) => value.startsWith("REPLACE_"));
 
@@ -25,10 +25,17 @@ async function initFirebase() {
     state.firebase = { auth, db, authModule, firestoreModule };
     authModule.onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-      state.user = { id: user.uid, name: user.displayName || user.email.split("@")[0], email: user.email, initials: (user.displayName || user.email)[0].toUpperCase() };
-      await ensureMemberProfile();
-      await loadFirebaseData();
-      showApp();
+      try {
+        state.user = { id: user.uid, name: user.displayName || user.email.split("@")[0], email: user.email, initials: (user.displayName || user.email)[0].toUpperCase() };
+        await ensureMemberProfile();
+        await loadFirebaseData();
+        showApp();
+      } catch (error) {
+        console.error("Workboard data could not be loaded", error);
+        $("loginMessage").textContent = error.code === "permission-denied"
+          ? "You are signed in, but the database rules have not been published yet."
+          : "You are signed in, but the shared workspace could not be loaded.";
+      }
     });
     return true;
   } catch (error) {
@@ -42,7 +49,7 @@ async function signIn(event) {
   event.preventDefault();
   $("loginMessage").textContent = "";
   if (!state.firebase) {
-    $("loginMessage").textContent = "Firebase setup is required before Microsoft sign-in can be used.";
+    $("loginMessage").textContent = "Sign-in is temporarily unavailable. Please refresh and try again.";
     return;
   }
   const { auth, authModule } = state.firebase;
