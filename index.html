@@ -135,6 +135,12 @@
         <button id="changePasswordButton" class="button button-secondary" type="button">Change password</button>
         <button id="signOutButton" class="button button-primary" type="button">Sign out</button>
       </div>
+      <form id="changePasswordForm" class="password-form" hidden>
+        <label>Current password<input id="currentPassword" type="password" autocomplete="current-password" required></label>
+        <label>New password<input id="newPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+        <label>Confirm new password<input id="confirmPassword" type="password" autocomplete="new-password" minlength="10" required></label>
+        <div class="dialog-actions"><button id="cancelPasswordButton" class="button button-secondary" type="button">Cancel</button><button id="savePasswordButton" class="button button-primary" type="submit">Save password</button></div>
+      </form>
       <p id="accountMessage" class="form-message" role="status"></p>
     </div>
   </dialog>

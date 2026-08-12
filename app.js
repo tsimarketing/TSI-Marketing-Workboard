@@ -98,20 +98,43 @@ async function signOut() {
 
 function openAccountSettings() {
   $("accountMessage").textContent = "";
+  $("changePasswordForm").hidden = true;
   closeSidebar();
   $("accountDialog").showModal();
 }
 
-async function changePassword() {
+function showPasswordForm() {
+  $("accountMessage").textContent = "";
+  $("changePasswordForm").hidden = false;
+  $("currentPassword").focus();
+}
+
+function hidePasswordForm() {
+  $("changePasswordForm").reset();
+  $("changePasswordForm").hidden = true;
+}
+
+async function changePassword(event) {
+  event.preventDefault();
   if (!state.user?.email || !state.firebase) return;
-  $("changePasswordButton").disabled = true;
+  const currentPassword = $("currentPassword").value;
+  const newPassword = $("newPassword").value;
+  if (newPassword !== $("confirmPassword").value) { $("accountMessage").textContent = "The new passwords do not match."; return; }
+  if (newPassword.length < 10) { $("accountMessage").textContent = "Use at least 10 characters for the new password."; return; }
+  $("savePasswordButton").disabled = true;
   try {
-    await state.firebase.authModule.sendPasswordResetEmail(state.firebase.auth, state.user.email);
-    $("accountMessage").textContent = "A password reset link has been sent to your email.";
+    const { auth, authModule } = state.firebase;
+    const credential = authModule.EmailAuthProvider.credential(state.user.email, currentPassword);
+    await authModule.reauthenticateWithCredential(auth.currentUser, credential);
+    await authModule.updatePassword(auth.currentUser, newPassword);
+    hidePasswordForm();
+    $("accountMessage").textContent = "Your password has been updated.";
   } catch (error) {
-    $("accountMessage").textContent = "We could not send the reset link. Please try again.";
+    $("accountMessage").textContent = error.code === "auth/invalid-credential"
+      ? "Your current password is incorrect."
+      : "We could not update your password. Please try again.";
   } finally {
-    $("changePasswordButton").disabled = false;
+    $("savePasswordButton").disabled = false;
   }
 }
 
@@ -187,7 +210,7 @@ async function saveTask(event) {
   $("taskDialog").close(); setView("my-tasks");
 }
 
-$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("profileButton").addEventListener("click", openAccountSettings); $("signOutButton").addEventListener("click", signOut); $("changePasswordButton").addEventListener("click", changePassword); $("closeAccountDialog").addEventListener("click", () => $("accountDialog").close()); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("closeTaskDialog").addEventListener("click", () => $("taskDialog").close()); $("menuButton").addEventListener("click", () => $("sidebar").classList.contains("open") ? closeSidebar() : openSidebar()); $("sidebarBackdrop").addEventListener("click", closeSidebar);
+$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("profileButton").addEventListener("click", openAccountSettings); $("signOutButton").addEventListener("click", signOut); $("changePasswordButton").addEventListener("click", showPasswordForm); $("changePasswordForm").addEventListener("submit", changePassword); $("cancelPasswordButton").addEventListener("click", hidePasswordForm); $("closeAccountDialog").addEventListener("click", () => $("accountDialog").close()); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("closeTaskDialog").addEventListener("click", () => $("taskDialog").close()); $("menuButton").addEventListener("click", () => $("sidebar").classList.contains("open") ? closeSidebar() : openSidebar()); $("sidebarBackdrop").addEventListener("click", closeSidebar);
 document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
 $("priorityFilter").addEventListener("change", (event) => { state.priorityFilter = event.target.value; renderTasks(); });
 $("globalSearch").addEventListener("input", (event) => { state.search = event.target.value.trim().toLowerCase(); if(state.search) setView("team-tasks"); else render(); });
