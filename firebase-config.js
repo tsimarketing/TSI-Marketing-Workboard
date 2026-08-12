@@ -1,13 +1,13 @@
 export const firebaseConfig = {
-  apiKey: "REPLACE_WITH_FIREBASE_API_KEY",
-  authDomain: "REPLACE_WITH_PROJECT.firebaseapp.com",
-  projectId: "REPLACE_WITH_PROJECT_ID",
-  storageBucket: "REPLACE_WITH_PROJECT.firebasestorage.app",
-  messagingSenderId: "REPLACE_WITH_SENDER_ID",
-  appId: "REPLACE_WITH_APP_ID"
+  apiKey: "AIzaSyBfY6Yzp5n-3hJRosm6qF38yBnnsHVaDOY",
+  authDomain: "tsi-marketing-workboard.firebaseapp.com",
+  projectId: "tsi-marketing-workboard",
+  storageBucket: "tsi-marketing-workboard.firebasestorage.app",
+  messagingSenderId: "321664396071",
+  appId: "1:321664396071:web:ff125c85784ba3c6fd5702",
+  measurementId: "G-M27XM063WM"
 };
 
 export const workboardConfig = {
-  allowedDomain: "tsico.com",
-  demoMode: true
+  demoMode: false
 };

@@ -1,36 +1,12 @@
-import { firebaseConfig, workboardConfig } from "./firebase-config.js";
+import { firebaseConfig } from "./firebase-config.js";
 
 const DAY = 86400000;
 const today = new Date();
-const isoDate = (offset) => new Date(today.getTime() + offset * DAY).toISOString().slice(0, 10);
-const demoMembers = [
-  { id: "gian", name: "Gian", email: "demo@tsico.com", role: "Brand Design", initials: "G", capacity: "At a good level", capacityKey: "balanced", focus: "Campaign visual system and launch materials" },
-  { id: "alex", name: "Alex", email: "alex@example.com", role: "Content", initials: "A", capacity: "Limited capacity", capacityKey: "limited", focus: "Webinar content and Q3 editorial calendar" },
-  { id: "morgan", name: "Morgan", email: "morgan@example.com", role: "Digital Marketing", initials: "M", capacity: "Open to tasks", capacityKey: "available", focus: "Campaign reporting and landing page review" },
-  { id: "sam", name: "Sam", email: "sam@example.com", role: "Video", initials: "S", capacity: "Could use support", capacityKey: "support", focus: "Customer story edits and event cutdowns" }
-];
-const demoTasks = [
-  { id: "t1", title: "Finalize Q3 campaign visual system", ownerId: "gian", status: "In progress", priority: "Time-sensitive", project: "Q3 Campaign", due: isoDate(2), note: "Complete final layouts and prepare the review board." },
-  { id: "t2", title: "Build webinar social toolkit", ownerId: "gian", status: "To do", priority: "Standard", project: "August Webinar", due: isoDate(6), note: "LinkedIn assets and speaker announcement sizes." },
-  { id: "t3", title: "Review landing page copy", ownerId: "gian", status: "Waiting", priority: "Flexible", project: "Healthcare Landing Page", due: isoDate(8), note: "Waiting for the final product notes." },
-  { id: "t4", title: "Draft webinar email sequence", ownerId: "alex", status: "In progress", priority: "Time-sensitive", project: "August Webinar", due: isoDate(1), note: "Draft two invite emails and the final reminder." },
-  { id: "t5", title: "Complete Q3 editorial calendar", ownerId: "alex", status: "In progress", priority: "Standard", project: "Always-on Content", due: isoDate(4), note: "Confirm SME availability before routing." },
-  { id: "t6", title: "Prepare campaign performance snapshot", ownerId: "morgan", status: "In progress", priority: "Standard", project: "Q3 Campaign", due: isoDate(5), note: "Summarize channel performance for the team sync." },
-  { id: "t7", title: "Review paid media creative", ownerId: "morgan", status: "To do", priority: "Flexible", project: "Q3 Campaign", due: isoDate(9), note: "Check dimensions and destination links." },
-  { id: "t8", title: "Edit customer story cutdown", ownerId: "sam", status: "In progress", priority: "Time-sensitive", project: "Customer Story", due: isoDate(1), note: "Complete the 30-second version for review." },
-  { id: "t9", title: "Export event screen loops", ownerId: "sam", status: "Waiting", priority: "Time-sensitive", project: "Fall Event", due: isoDate(3), note: "Waiting for approved speaker titles." },
-  { id: "t10", title: "Create short-form video captions", ownerId: "sam", status: "To do", priority: "Standard", project: "Customer Story", due: isoDate(7), note: "Prepare captions for three short clips." }
-];
 
 const state = { user: null, members: demoMembers, tasks: [], currentView: "overview", taskScope: "team-tasks", statusFilter: "All", priorityFilter: "all", search: "", firebase: null };
 const $ = (id) => document.getElementById(id);
 const firebaseReady = !Object.values(firebaseConfig).some((value) => value.startsWith("REPLACE_"));
 
-function loadDemoTasks() {
-  const stored = localStorage.getItem("tsi-workboard-demo-tasks");
-  state.tasks = stored ? JSON.parse(stored) : structuredClone(demoTasks);
-}
-function persistDemoTasks() { localStorage.setItem("tsi-workboard-demo-tasks", JSON.stringify(state.tasks)); }
 function safeText(value) { return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
 function memberFor(ownerId) { return state.members.find((member) => member.id === ownerId) || state.members[0]; }
 function dueSoon(task) { return task.due && new Date(`${task.due}T23:59:59`) - today <= 3 * DAY && task.status !== "Complete"; }
@@ -49,12 +25,8 @@ async function initFirebase() {
     state.firebase = { auth, db, authModule, firestoreModule };
     authModule.onAuthStateChanged(auth, async (user) => {
       if (!user) return;
-      if ((user.email || "").split("@")[1]?.toLowerCase() !== workboardConfig.allowedDomain) {
-        await authModule.signOut(auth);
-        $("loginMessage").textContent = "This account is not approved for the TSI Marketing Workboard.";
-        return;
-      }
       state.user = { id: user.uid, name: user.displayName || user.email.split("@")[0], email: user.email, initials: (user.displayName || user.email)[0].toUpperCase() };
+      await ensureMemberProfile();
       await loadFirebaseData();
       showApp();
     });
@@ -66,31 +38,46 @@ async function initFirebase() {
   }
 }
 
-async function signIn() {
+async function signIn(event) {
+  event.preventDefault();
   $("loginMessage").textContent = "";
   if (!state.firebase) {
     $("loginMessage").textContent = "Firebase setup is required before Microsoft sign-in can be used.";
     return;
   }
   const { auth, authModule } = state.firebase;
-  const provider = new authModule.OAuthProvider("microsoft.com");
-  provider.setCustomParameters({ tenant: "common", prompt: "select_account" });
-  try { await authModule.signInWithPopup(auth, provider); }
-  catch (error) { if (error.code !== "auth/popup-closed-by-user") $("loginMessage").textContent = "We could not complete sign-in. Please use your TSI Microsoft account."; }
+  $("signInButton").disabled = true;
+  $("signInButton").textContent = "Signing in...";
+  try { await authModule.signInWithEmailAndPassword(auth, $("loginEmail").value.trim(), $("loginPassword").value); }
+  catch (error) { $("loginMessage").textContent = "We could not sign you in. Check your email and password, then try again."; }
+  finally { $("signInButton").disabled = false; $("signInButton").textContent = "Sign in"; }
+}
+
+async function resetPassword() {
+  $("loginMessage").textContent = "";
+  const email = $("loginEmail").value.trim();
+  if (!email) { $("loginMessage").textContent = "Enter your email address first, then select Forgot password."; return; }
+  if (!state.firebase) { $("loginMessage").textContent = "Password reset is temporarily unavailable."; return; }
+  try { await state.firebase.authModule.sendPasswordResetEmail(state.firebase.auth, email); $("loginMessage").textContent = "If this email has an approved account, a reset link has been sent."; }
+  catch (error) { $("loginMessage").textContent = "If this email has an approved account, a reset link has been sent."; }
+}
+
+async function ensureMemberProfile() {
+  const { db, firestoreModule: fs } = state.firebase;
+  const memberRef = fs.doc(db, "members", state.user.id);
+  const memberSnapshot = await fs.getDoc(memberRef);
+  if (!memberSnapshot.exists()) {
+    await fs.setDoc(memberRef, { name: state.user.name, email: state.user.email, initials: state.user.initials, role: "Marketing Team", capacity: "At a good level", capacityKey: "balanced", focus: "Add your current focus", createdAt: new Date().toISOString() });
+  }
 }
 
 async function loadFirebaseData() {
   const { db, firestoreModule: fs } = state.firebase;
   const [membersSnapshot, tasksSnapshot] = await Promise.all([fs.getDocs(fs.collection(db, "members")), fs.getDocs(fs.collection(db, "tasks"))]);
-  state.members = membersSnapshot.empty ? [{ ...state.user, role: "Marketing Team", capacity: "At a good level", capacityKey: "balanced", focus: "Add your current focus" }] : membersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
+  state.members = membersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
   state.tasks = tasksSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
 }
 
-function previewDemo() {
-  state.user = demoMembers[0];
-  loadDemoTasks();
-  showApp();
-}
 function showApp() {
   $("loginView").hidden = true; $("appView").hidden = false;
   $("sidebarName").textContent = state.user.name; $("sidebarEmail").textContent = state.user.email; $("sidebarAvatar").textContent = state.user.initials;
@@ -121,12 +108,12 @@ function renderTasks() {
   $("taskTabs").innerHTML = statuses.map((status) => `<button class="tab ${state.statusFilter === status ? "active" : ""}" data-status="${status}" role="tab" aria-selected="${state.statusFilter === status}">${status}</button>`).join("");
   document.querySelectorAll("[data-status]").forEach((tab) => tab.addEventListener("click", () => { state.statusFilter = tab.dataset.status; renderTasks(); }));
   let tasks = state.tasks;
-  if (state.taskScope === "my-tasks") tasks = tasks.filter((task) => task.ownerId === state.user.id || task.ownerId === "gian");
+  if (state.taskScope === "my-tasks") tasks = tasks.filter((task) => task.ownerId === state.user.id);
   else if (!['team-tasks','overview'].includes(state.taskScope)) tasks = tasks.filter((task) => task.ownerId === state.taskScope);
   if (state.statusFilter !== "All") tasks = tasks.filter((task) => task.status === state.statusFilter);
   if (state.priorityFilter !== "all") tasks = tasks.filter((task) => task.priority === state.priorityFilter);
   if (state.search) tasks = tasks.filter((task) => `${task.title} ${task.project} ${task.note}`.toLowerCase().includes(state.search));
-  $("taskList").innerHTML = tasks.length ? tasks.map((task) => `<article class="task-row"><span class="task-signal ${task.priority === "Time-sensitive" ? "sensitive" : ""}"></span><div class="task-main"><strong>${safeText(task.title)}</strong><small>${safeText(task.note || "No note added")}</small></div><span class="task-meta">${safeText(task.project || "No project")}</span><span class="status-chip ${task.status.toLowerCase().replace(" ", "-")}">${safeText(task.status)}</span><span class="task-meta">${task.due ? new Date(`${task.due}T12:00:00`).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "No due date"}<br>${safeText(memberFor(task.ownerId).name)}</span><button class="row-action" data-edit="${task.id}" type="button" aria-label="Edit task">⋯</button></article>`).join("") : `<div class="empty-state">No tasks match these filters.</div>`;
+  $("taskList").innerHTML = tasks.length ? tasks.map((task) => `<article class="task-row"><span class="task-signal ${task.priority === "Time-sensitive" ? "sensitive" : ""}"></span><div class="task-main"><strong>${safeText(task.title)}</strong><small>${safeText(task.note || "No note added")}</small></div><span class="task-meta">${safeText(task.project || "No project")}</span><span class="status-chip ${task.status.toLowerCase().replace(" ", "-")}">${safeText(task.status)}</span><span class="task-meta">${task.due ? new Date(`${task.due}T12:00:00`).toLocaleDateString(undefined,{month:"short",day:"numeric"}) : "No due date"}<br>${safeText(memberFor(task.ownerId).name)}</span>${task.ownerId === state.user.id ? `<button class="row-action" data-edit="${task.id}" type="button" aria-label="Edit task">⋯</button>` : `<span aria-hidden="true"></span>`}</article>`).join("") : `<div class="empty-state">No tasks match these filters.</div>`;
   document.querySelectorAll("[data-edit]").forEach((button) => button.addEventListener("click", () => openTaskDialog(button.dataset.edit)));
 }
 
@@ -153,15 +140,16 @@ function openTaskDialog(id) {
 async function saveTask(event) {
   event.preventDefault(); if (!$("taskForm").reportValidity()) return;
   const id = $("taskId").value || `task-${Date.now()}`;
-  const task = { id, title: $("taskTitle").value.trim(), ownerId: state.user.id === demoMembers[0].id ? "gian" : state.user.id, status: $("taskStatus").value, priority: $("taskPriority").value, project: $("taskProject").value.trim(), due: $("taskDue").value, note: $("taskNote").value.trim(), updatedAt: new Date().toISOString() };
+  const task = { id, title: $("taskTitle").value.trim(), ownerId: state.user.id, status: $("taskStatus").value, priority: $("taskPriority").value, project: $("taskProject").value.trim(), due: $("taskDue").value, note: $("taskNote").value.trim(), updatedAt: new Date().toISOString() };
   const existingIndex = state.tasks.findIndex((item) => item.id === id); if(existingIndex >= 0) state.tasks[existingIndex] = task; else state.tasks.unshift(task);
-  if (state.firebase) { const { db, firestoreModule: fs } = state.firebase; await fs.setDoc(fs.doc(db,"tasks",id), task); } else persistDemoTasks();
+  if (!state.firebase) return;
+  const { db, firestoreModule: fs } = state.firebase;
+  await fs.setDoc(fs.doc(db,"tasks",id), task);
   $("taskDialog").close(); setView("my-tasks");
 }
 
-$("signInButton").addEventListener("click", signIn); $("demoButton").addEventListener("click", previewDemo); $("signOutButton").addEventListener("click", signOut); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("menuButton").addEventListener("click", () => $("sidebar").classList.toggle("open"));
+$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("signOutButton").addEventListener("click", signOut); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("menuButton").addEventListener("click", () => $("sidebar").classList.toggle("open"));
 document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
 $("priorityFilter").addEventListener("change", (event) => { state.priorityFilter = event.target.value; renderTasks(); });
 $("globalSearch").addEventListener("input", (event) => { state.search = event.target.value.trim().toLowerCase(); if(state.search) setView("team-tasks"); else render(); });
-if (!workboardConfig.demoMode) $("demoButton").hidden = true;
 initFirebase();

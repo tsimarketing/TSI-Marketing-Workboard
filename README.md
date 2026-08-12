@@ -10,20 +10,19 @@ A shared workload and task dashboard for the TSI Marketing Team. Everyone sees t
 - Status and priority filters
 - Project grouping
 - Add and edit task flows
-- Microsoft sign-in through Firebase Authentication
-- Client and Firestore enforcement for verified `@tsico.com` accounts
-- Local demo mode for design review before Firebase is connected
+- Email and password sign-in through Firebase Authentication
+- Approved-account-only Firestore access
+- Password reset support
 
 ## Firebase setup
 
 1. Create a Firebase project and web app.
-2. Enable Microsoft as a Firebase Authentication provider and add the Microsoft application credentials.
+2. Enable Email/Password as a Firebase Authentication provider.
 3. Add the GitHub Pages domain to Firebase Authentication's authorized domains.
-4. Replace the placeholder values in `firebase-config.js`.
+4. Confirm the web configuration values in `firebase-config.js`.
 5. Deploy `firestore.rules` to the project.
-6. Change `demoMode` to `false` in `firebase-config.js` before production use.
 
-The UI checks the signed-in email domain, while `firestore.rules` independently enforces verified `@tsico.com` access to team data. For stricter tenant-only access, configure the Microsoft provider with the TSI tenant ID instead of `common` in `app.js`.
+Accounts are created and managed by the project owner in Firebase Authentication. The app does not expose public self-registration. Firestore rules require authentication and restrict task updates to each task owner.
 
 ## GitHub Pages
 

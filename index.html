@@ -18,13 +18,14 @@
       <p class="context-label">Marketing Workboard</p>
       <h1>A clearer view of the work we share.</h1>
       <p class="login-copy">See current focus, upcoming work, and where a teammate may need support. No rankings, no productivity scores.</p>
-      <button id="signInButton" class="button button-primary" type="button">
-        <span class="microsoft-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        Sign in with Microsoft
-      </button>
-      <button id="demoButton" class="button button-secondary" type="button">Preview demo</button>
+      <form id="loginForm" class="login-form">
+        <label>Email address<input id="loginEmail" type="email" autocomplete="username" required placeholder="name@example.com"></label>
+        <label>Password<input id="loginPassword" type="password" autocomplete="current-password" required placeholder="Enter your password"></label>
+        <button id="signInButton" class="button button-primary" type="submit">Sign in</button>
+        <button id="resetPasswordButton" class="text-button" type="button">Forgot password?</button>
+      </form>
       <p id="loginMessage" class="form-message" role="status"></p>
-      <p class="access-note">Access is limited to verified <strong>@tsico.com</strong> accounts.</p>
+      <p class="access-note">Access is limited to approved Marketing Team accounts.</p>
     </main>
     <aside class="login-aside" aria-label="How the workboard helps">
       <div class="signal-line"><span></span><span></span><span></span></div>
@@ -55,8 +56,8 @@
         <p>Visibility for better teamwork, not performance tracking.</p>
       </div>
       <button id="signOutButton" class="profile-button" type="button">
-        <span class="avatar avatar-small" id="sidebarAvatar">G</span>
-        <span><strong id="sidebarName">Gian</strong><small id="sidebarEmail">demo@tsico.com</small></span>
+        <span class="avatar avatar-small" id="sidebarAvatar">M</span>
+        <span><strong id="sidebarName">Marketing Team</strong><small id="sidebarEmail">Approved account</small></span>
         <span aria-hidden="true">↗</span>
       </button>
     </aside>
