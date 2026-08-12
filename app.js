@@ -113,13 +113,74 @@ async function signOut() {
 
 function openAccountSettings() {
   $("accountMessage").textContent = "";
+  $("editProfileForm").hidden = true;
   $("changePasswordForm").hidden = true;
   closeSidebar();
   $("accountDialog").showModal();
 }
 
+function showProfileForm() {
+  const member = state.members.find((item) => item.id === state.user.id) || {};
+  $("changePasswordForm").hidden = true;
+  $("accountMessage").textContent = "";
+  $("profileName").value = member.name || state.user.name;
+  $("profileRole").value = member.role || "Marketing Team";
+  $("profileFocus").value = member.focus === "Add your current focus" ? "" : (member.focus || "");
+  $("profileCapacity").value = member.capacityKey || "balanced";
+  $("editProfileForm").hidden = false;
+  $("profileName").focus();
+}
+
+function hideProfileForm() {
+  $("editProfileForm").reset();
+  $("editProfileForm").hidden = true;
+}
+
+async function saveProfile(event) {
+  event.preventDefault();
+  if (!state.firebase || !state.user) return;
+  const capacityLabels = { available: "Open to tasks", balanced: "At a good level", limited: "Limited capacity", support: "Could use support" };
+  const capacityKey = $("profileCapacity").value;
+  const profile = {
+    name: $("profileName").value.trim(),
+    email: state.user.email,
+    initials: $("profileName").value.trim().slice(0, 1).toUpperCase(),
+    role: $("profileRole").value.trim() || "Marketing Team",
+    focus: $("profileFocus").value.trim() || "No current focus added",
+    capacity: capacityLabels[capacityKey],
+    capacityKey,
+    updatedAt: new Date().toISOString()
+  };
+  $("saveProfileButton").disabled = true;
+  try {
+    const { auth, authModule, db, firestoreModule: fs } = state.firebase;
+    await Promise.all([
+      fs.setDoc(fs.doc(db, "members", state.user.id), profile, { merge: true }),
+      authModule.updateProfile(auth.currentUser, { displayName: profile.name })
+    ]);
+    state.user.name = profile.name;
+    state.user.initials = profile.initials;
+    const memberIndex = state.members.findIndex((item) => item.id === state.user.id);
+    const updatedMember = { id: state.user.id, ...(memberIndex >= 0 ? state.members[memberIndex] : {}), ...profile };
+    if (memberIndex >= 0) state.members[memberIndex] = updatedMember; else state.members.push(updatedMember);
+    $("sidebarName").textContent = profile.name; $("sidebarAvatar").textContent = profile.initials;
+    $("accountName").textContent = profile.name; $("accountAvatar").textContent = profile.initials;
+    hideProfileForm();
+    $("accountMessage").textContent = "Your profile and current focus have been updated.";
+    render();
+  } catch (error) {
+    console.error("Profile update failed", error);
+    $("accountMessage").textContent = error.code === "permission-denied"
+      ? "Your profile could not be saved because the Firestore rules need to be updated."
+      : "We could not save your profile. Please try again.";
+  } finally {
+    $("saveProfileButton").disabled = false;
+  }
+}
+
 function showPasswordForm() {
   $("accountMessage").textContent = "";
+  $("editProfileForm").hidden = true;
   $("changePasswordForm").hidden = false;
   $("currentPassword").focus();
 }
@@ -245,7 +306,7 @@ async function saveTask(event) {
   $("taskDialog").close(); setView("my-tasks");
 }
 
-$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("profileButton").addEventListener("click", openAccountSettings); $("signOutButton").addEventListener("click", signOut); $("changePasswordButton").addEventListener("click", showPasswordForm); $("changePasswordForm").addEventListener("submit", changePassword); $("cancelPasswordButton").addEventListener("click", hidePasswordForm); $("closeAccountDialog").addEventListener("click", () => $("accountDialog").close()); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("closeTaskDialog").addEventListener("click", () => $("taskDialog").close()); $("menuButton").addEventListener("click", () => $("sidebar").classList.contains("open") ? closeSidebar() : openSidebar()); $("sidebarBackdrop").addEventListener("click", closeSidebar);
+$("loginForm").addEventListener("submit", signIn); $("resetPasswordButton").addEventListener("click", resetPassword); $("profileButton").addEventListener("click", openAccountSettings); $("editProfileButton").addEventListener("click", showProfileForm); $("editProfileForm").addEventListener("submit", saveProfile); $("cancelProfileButton").addEventListener("click", hideProfileForm); $("signOutButton").addEventListener("click", signOut); $("changePasswordButton").addEventListener("click", showPasswordForm); $("changePasswordForm").addEventListener("submit", changePassword); $("cancelPasswordButton").addEventListener("click", hidePasswordForm); $("closeAccountDialog").addEventListener("click", () => $("accountDialog").close()); $("addTaskButton").addEventListener("click", () => openTaskDialog()); $("saveTaskButton").addEventListener("click", saveTask); $("closeTaskDialog").addEventListener("click", () => $("taskDialog").close()); $("menuButton").addEventListener("click", () => $("sidebar").classList.contains("open") ? closeSidebar() : openSidebar()); $("sidebarBackdrop").addEventListener("click", closeSidebar);
 document.querySelectorAll(".nav-item").forEach((item) => item.addEventListener("click", () => setView(item.dataset.view)));
 $("priorityFilter").addEventListener("change", (event) => { state.priorityFilter = event.target.value; renderTasks(); });
 $("globalSearch").addEventListener("input", (event) => { state.search = event.target.value.trim().toLowerCase(); if(state.search) setView("team-tasks"); else render(); });
