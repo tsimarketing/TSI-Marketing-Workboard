@@ -65,8 +65,23 @@ async function resetPassword() {
   const email = $("loginEmail").value.trim();
   if (!email) { $("loginMessage").textContent = "Enter your email address first, then select Forgot password."; return; }
   if (!state.firebase) { $("loginMessage").textContent = "Password reset is temporarily unavailable."; return; }
-  try { await state.firebase.authModule.sendPasswordResetEmail(state.firebase.auth, email); $("loginMessage").textContent = "If this email has an approved account, a reset link has been sent."; }
-  catch (error) { $("loginMessage").textContent = "If this email has an approved account, a reset link has been sent."; }
+  try {
+    state.firebase.auth.useDeviceLanguage();
+    await state.firebase.authModule.sendPasswordResetEmail(state.firebase.auth, email, {
+      url: "https://tsimarketing.github.io/TSI-Marketing-Workboard/",
+      handleCodeInApp: false
+    });
+    $("loginMessage").textContent = "Reset email requested. Check your inbox and spam folder.";
+  } catch (error) {
+    console.error("Password reset request failed", error);
+    const messages = {
+      "auth/unauthorized-continue-uri": "The Workboard URL must be added to Firebase Authentication authorized domains.",
+      "auth/invalid-continue-uri": "The password reset return URL is not configured correctly.",
+      "auth/too-many-requests": "Too many reset attempts were made. Please wait and try again.",
+      "auth/network-request-failed": "The reset request could not reach Firebase. Check your connection and try again."
+    };
+    $("loginMessage").textContent = messages[error.code] || "The reset email could not be requested. Please contact the Workboard administrator.";
+  }
 }
 
 async function ensureMemberProfile() {
@@ -124,15 +139,35 @@ async function changePassword(event) {
   $("savePasswordButton").disabled = true;
   try {
     const { auth, authModule } = state.firebase;
+    const policy = await authModule.validatePassword(auth, newPassword);
+    if (!policy.isValid) {
+      const requirements = [];
+      if (policy.meetsMinPasswordLength === false) requirements.push("the required minimum length");
+      if (policy.containsLowercaseLetter === false) requirements.push("a lowercase letter");
+      if (policy.containsUppercaseLetter === false) requirements.push("an uppercase letter");
+      if (policy.containsNumericCharacter === false) requirements.push("a number");
+      if (policy.containsNonAlphanumericCharacter === false) requirements.push("a special character");
+      $("accountMessage").textContent = `Your new password needs ${requirements.join(", ")}.`;
+      return;
+    }
     const credential = authModule.EmailAuthProvider.credential(state.user.email, currentPassword);
     await authModule.reauthenticateWithCredential(auth.currentUser, credential);
     await authModule.updatePassword(auth.currentUser, newPassword);
     hidePasswordForm();
     $("accountMessage").textContent = "Your password has been updated.";
   } catch (error) {
-    $("accountMessage").textContent = error.code === "auth/invalid-credential"
-      ? "Your current password is incorrect."
-      : "We could not update your password. Please try again.";
+    console.error("Password update failed", error);
+    const messages = {
+      "auth/invalid-credential": "Your current password is incorrect.",
+      "auth/wrong-password": "Your current password is incorrect.",
+      "auth/weak-password": "The new password does not meet the Firebase password policy.",
+      "auth/password-does-not-meet-requirements": "The new password does not meet the Firebase password policy.",
+      "auth/requires-recent-login": "Please sign out, sign back in, and try changing your password again.",
+      "auth/too-many-requests": "Too many attempts were made. Please wait and try again.",
+      "auth/network-request-failed": "Firebase could not be reached. Check your connection and try again.",
+      "auth/operation-not-allowed": "Email and password authentication is not enabled in Firebase."
+    };
+    $("accountMessage").textContent = messages[error.code] || `Password update failed (${error.code || "unknown error"}).`;
   } finally {
     $("savePasswordButton").disabled = false;
   }
