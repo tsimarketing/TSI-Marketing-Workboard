@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#001e41">
+  <meta name="description" content="A shared workload and task view for the TSI Marketing Team.">
+  <title>TSI Marketing Workboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div id="loginView" class="login-shell">
+    <main class="login-panel">
+      <img class="brand-logo" src="assets/tsi-logo.png" alt="TSI">
+      <p class="context-label">Marketing Workboard</p>
+      <h1>A clearer view of the work we share.</h1>
+      <p class="login-copy">See current focus, upcoming work, and where a teammate may need support. No rankings, no productivity scores.</p>
+      <button id="signInButton" class="button button-primary" type="button">
+        <span class="microsoft-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        Sign in with Microsoft
+      </button>
+      <button id="demoButton" class="button button-secondary" type="button">Preview demo</button>
+      <p id="loginMessage" class="form-message" role="status"></p>
+      <p class="access-note">Access is limited to verified <strong>@tsico.com</strong> accounts.</p>
+    </main>
+    <aside class="login-aside" aria-label="How the workboard helps">
+      <div class="signal-line"><span></span><span></span><span></span></div>
+      <p>Built for shared visibility</p>
+      <h2>Know the team’s current focus without turning work into surveillance.</h2>
+      <ul>
+        <li>Capacity is self-reported</li>
+        <li>Everyone sees the same overview</li>
+        <li>Blocked work is visible early</li>
+      </ul>
+    </aside>
+  </div>
+
+  <div id="appView" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <img class="brand-logo" src="assets/tsi-logo.png" alt="TSI">
+        <span>Marketing Workboard</span>
+      </div>
+      <nav aria-label="Primary navigation">
+        <button class="nav-item active" data-view="overview" type="button"><span aria-hidden="true">⌂</span> Overview</button>
+        <button class="nav-item" data-view="my-tasks" type="button"><span aria-hidden="true">✓</span> My tasks</button>
+        <button class="nav-item" data-view="team-tasks" type="button"><span aria-hidden="true">▤</span> Team tasks</button>
+        <button class="nav-item" data-view="projects" type="button"><span aria-hidden="true">□</span> Projects</button>
+      </nav>
+      <div class="sidebar-principle">
+        <span class="principle-mark" aria-hidden="true"></span>
+        <p>Visibility for better teamwork, not performance tracking.</p>
+      </div>
+      <button id="signOutButton" class="profile-button" type="button">
+        <span class="avatar avatar-small" id="sidebarAvatar">G</span>
+        <span><strong id="sidebarName">Gian</strong><small id="sidebarEmail">demo@tsico.com</small></span>
+        <span aria-hidden="true">↗</span>
+      </button>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <button id="menuButton" class="icon-button menu-button" type="button" aria-label="Open navigation">☰</button>
+        <div>
+          <p id="pageKicker" class="page-kicker">Wednesday, August 12</p>
+          <h1 id="pageTitle">Team overview</h1>
+        </div>
+        <div class="top-actions">
+          <label class="search-control">
+            <span aria-hidden="true">⌕</span>
+            <span class="sr-only">Search tasks</span>
+            <input id="globalSearch" type="search" placeholder="Search tasks">
+          </label>
+          <button id="addTaskButton" class="button button-primary compact" type="button">Add task</button>
+        </div>
+      </header>
+
+      <section id="overviewView" class="view-panel">
+        <div class="overview-intro">
+          <div>
+            <p class="context-label">Shared workload</p>
+            <h2>What the team is carrying right now</h2>
+            <p>Capacity is set by each teammate. Task counts add context, not a score.</p>
+          </div>
+          <div id="weekSummary" class="week-summary"></div>
+        </div>
+        <div id="teamList" class="team-list" aria-live="polite"></div>
+      </section>
+
+      <section id="tasksView" class="view-panel" hidden>
+        <div class="filter-row">
+          <div id="taskTabs" class="tabs" role="tablist" aria-label="Task status"></div>
+          <label class="select-control">Priority
+            <select id="priorityFilter"><option value="all">All priorities</option><option>Time-sensitive</option><option>Standard</option><option>Flexible</option></select>
+          </label>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </section>
+
+      <section id="projectsView" class="view-panel" hidden>
+        <div class="overview-intro">
+          <div><p class="context-label">Shared projects</p><h2>Work grouped by initiative</h2><p>Open a project to see active owners, deadlines, and outstanding work.</p></div>
+        </div>
+        <div id="projectList" class="project-list"></div>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="taskDialog" class="task-dialog">
+    <form id="taskForm" method="dialog">
+      <div class="dialog-head"><div><p class="context-label">Task details</p><h2 id="dialogTitle">Add a task</h2></div><button class="icon-button" value="cancel" aria-label="Close">×</button></div>
+      <input id="taskId" type="hidden">
+      <label>Task title<input id="taskTitle" required maxlength="90" placeholder="What needs to be done?"></label>
+      <div class="form-grid">
+        <label>Status<select id="taskStatus"><option>To do</option><option>In progress</option><option>Waiting</option><option>Complete</option></select></label>
+        <label>Priority<select id="taskPriority"><option>Standard</option><option>Time-sensitive</option><option>Flexible</option></select></label>
+        <label>Project<input id="taskProject" maxlength="50" placeholder="Campaign or initiative"></label>
+        <label>Due date<input id="taskDue" type="date"></label>
+      </div>
+      <label>Next step or note<textarea id="taskNote" rows="3" maxlength="220" placeholder="Add the context teammates need"></textarea></label>
+      <div class="dialog-actions"><button class="button button-secondary" value="cancel">Cancel</button><button id="saveTaskButton" class="button button-primary" value="default">Save task</button></div>
+    </form>
+  </dialog>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

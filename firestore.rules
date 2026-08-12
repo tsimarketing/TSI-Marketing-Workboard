@@ -1,0 +1,22 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedInWithTsiEmail() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email.matches('.*@[tT][sS][iI][cC][oO]\\.[cC][oO][mM]$');
+    }
+
+    match /members/{memberId} {
+      allow read: if signedInWithTsiEmail();
+      allow create, update: if signedInWithTsiEmail() && request.auth.uid == memberId;
+      allow delete: if false;
+    }
+
+    match /tasks/{taskId} {
+      allow read: if signedInWithTsiEmail();
+      allow create: if signedInWithTsiEmail() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if signedInWithTsiEmail() && resource.data.ownerId == request.auth.uid;
+    }
+  }
+}
